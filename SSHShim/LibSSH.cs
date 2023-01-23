@@ -6,8 +6,8 @@ namespace LibSSH
 {
     public class SSHInstance : IDisposable
     {
-        IntPtr Session;
-        IntPtr Channel;
+        public IntPtr Session;
+        public IntPtr Channel;
         public SSHInstance()
         {
             Session = ssh_new();
@@ -16,8 +16,11 @@ namespace LibSSH
         {
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HOST, Marshal.StringToHGlobalAnsi(Host));
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_USER, Marshal.StringToHGlobalAnsi(Username));
+            ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HMAC_C_S, Marshal.StringToHGlobalAnsi("hmac-sha1-96,hmac-md5,hmac-sha1,hmac-md5-96,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512"));
+            ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HMAC_S_C, Marshal.StringToHGlobalAnsi("hmac-sha1-96,hmac-md5,hmac-sha1,hmac-md5-96,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512"));
+            ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_KEY_EXCHANGE, Marshal.StringToHGlobalAnsi("ssh-rsa,rsa-sha2-512,rsa-sha2-256,ssh-ed25519,ecdsa-sha2-nistp521,ecdsa-sha2-nistp384,ecdsa-sha2-nistp256"));
             SSH_ERROR connect_result = ssh_connect(Session);
-            if (connect_result != SSH_ERROR.SSH_OK) throw new LibSSHException("Could not connect to host: " + connect_result.ToString());
+            if (connect_result != SSH_ERROR.SSH_OK) throw new LibSSHException(this, "Could not connect to host: " + connect_result.ToString());
             ssh_userauth_none(Session, IntPtr.Zero);
             SSH_AUTH_METHOD methods = ssh_userauth_list(Session, IntPtr.Zero);
             if (methods.HasFlag(SSH_AUTH_METHOD.SSH_AUTH_METHOD_INTERACTIVE))
@@ -26,25 +29,25 @@ namespace LibSSH
                 while (auth_result.HasFlag(SSH_AUTH_E.SSH_AUTH_INFO))
                 {
                     string prompt = Marshal.PtrToStringAnsi(ssh_userauth_kbdint_getprompt(Session, 0));
-                    if (prompt == null) throw new LibSSHException("Bad password.");
+                    if (prompt == null) throw new LibSSHException(this, "Bad password.");
                     if (prompt.ToLower().Contains("password"))
                     {
                         ssh_userauth_kbdint_setanswer(Session, 0, Marshal.StringToHGlobalAnsi(Password));
                     } 
                     else
                     {
-                        throw new LibSSHException("No password prompt found.");
+                        throw new LibSSHException(this, "No password prompt found.");
                     }
                     auth_result = ssh_userauth_kbdint(Session, IntPtr.Zero, IntPtr.Zero);
                 }
                 if (!auth_result.HasFlag(SSH_AUTH_E.SSH_AUTH_SUCCESS))
                 {
-                    throw new LibSSHException("Authentication failure.");
+                    throw new LibSSHException(this, "Authentication failure.");
                 }
             }
             else
             {
-                throw new LibSSHException("Interactive login not supported on remote host.");
+                throw new LibSSHException(this, "Interactive login not supported on remote host.");
             }
             Channel = ssh_channel_new(Session);
             ssh_channel_open_session(Channel);
@@ -59,8 +62,10 @@ namespace LibSSH
                 int bytes_read = ssh_channel_read_timeout(Channel, buffer, 10240, false, TimeoutMS);
                 if (bytes_read == 0) break;
                 string sbytes = Marshal.PtrToStringAnsi(buffer, bytes_read);
+                sbytes = Regex.Replace(sbytes, @"\x1b\[1;0H", "\r\n");
+                sbytes = Regex.Replace(sbytes, @"\x1b\[\??\d{1,2};?\d{0,2}\D?", "");
                 result += sbytes;
-                if (Regex.IsMatch(result, ExpectRegex)) break;
+                if (Regex.IsMatch(sbytes, ExpectRegex)) break;
             }
             Marshal.FreeHGlobal(buffer);
             return result;
@@ -84,6 +89,21 @@ namespace LibSSH
     }
     public class LibSSHException : Exception
     {
-        public LibSSHException(string? message) : base(message) { }
+        private string rMessage;
+        private string rError;
+        public override string Message
+        {
+            get
+            {
+                return rMessage + "\r\n\r\n" + rError;
+            }
+        }
+        public LibSSHException(SSHInstance Instance, string? message)
+        {
+            rMessage = message;
+            IntPtr error_message = ssh_get_error(Instance.Session);
+            rError = Marshal.PtrToStringAnsi(error_message);
+            Instance.Dispose();
+        }
     }
 }

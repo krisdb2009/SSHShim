@@ -9,17 +9,19 @@ app.MapGet("/", async (request) => {
 
     SSHInstance instance = new();
 
-    instance.Connect("10.0.0.1", "", "");
+    instance.Connect("", "", "");
 
-    await request.Response.WriteAsync(instance.Get());
+    instance.Get();
 
     instance.Send("\r");
 
-    //(\x1b\[.*?H)
-
     instance.Get();
     
-    instance.Send("no page\rshow run\rexpectdone\r");
+    instance.Send("no page\r");
+
+    instance.Get();
+
+    instance.Send("show run\rexpectdone\r");
 
     await request.Response.WriteAsync(instance.Get(10000, "expectdone"));
 
