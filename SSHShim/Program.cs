@@ -15,6 +15,8 @@ app.MapGet("/", async (request) => {
 
     instance.Send("\r");
 
+    //(\x1b\[.*?H)
+
     instance.Get();
     
     instance.Send("no page\rshow run\rexpectdone\r");
