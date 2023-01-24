@@ -1,33 +1,54 @@
 using LibSSH;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
-var builder = WebApplication.CreateBuilder(args);
-var app = builder.Build();
-
-app.MapGet("/", async (request) => {
-
-    request.Response.ContentType= "text/plain";
-
-    SSHInstance instance = new();
-
-    instance.Connect("", "", "");
-
-    instance.Get();
-
-    instance.Send("\r");
-
-    instance.Get();
-    
-    instance.Send("no page\r");
-
-    instance.Get();
-
-    instance.Send("show run\rexpectdone\r");
-
-    await request.Response.WriteAsync(instance.Get(10000, "expectdone"));
-
-    instance.Disconnect();
-
-
-});
-
-app.Run();
+namespace SSHShim
+{
+    public class SSHShim
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+            var app = builder.Build();
+            app.MapPost("/", async (hc) => {
+                hc.Response.ContentType = "text/plain";
+                string hostname = hc.Request.Form["hostname"];
+                string username = hc.Request.Form["username"];
+                string password = hc.Request.Form["password"];
+                string commands = hc.Request.Form["commands"];
+                if (
+                    hostname == null ||
+                    username == null ||
+                    password == null ||
+                    commands == null ||
+                    hostname == "" ||
+                    username == "" ||
+                    password == "" ||
+                    commands == ""
+                ) throw new Exception("POST: 'hostname', 'username', 'password', or 'commands' missing.");
+                SSHInstance instance = new();
+                instance.Connect(hostname, username, password);
+                foreach (var command in commands.Split('\n'))
+                {
+                    if (Regex.IsMatch(command, "^{.*}$"))
+                    {
+                        ParameterLine parameters = JsonSerializer.Deserialize<ParameterLine>(command);
+                        instance.Get(parameters.TimeoutMS, parameters.Expect);
+                    }
+                    else
+                    {
+                        instance.Send(command + "\n");
+                    }
+                }
+                instance.Dispose();
+                await hc.Response.WriteAsync(instance.Console);
+            });
+            app.Run();
+        }
+    }
+    class ParameterLine
+    {
+        public int TimeoutMS { get; set; } = 30000;
+        public string Expect { get; set; } = ".*";
+    }
+}
