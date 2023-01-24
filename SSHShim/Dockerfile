@@ -16,6 +16,8 @@ FROM build AS publish
 RUN dotnet publish "SSHShim.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+RUN apt update
+RUN apt install libssh-dev -y
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "SSHShim.dll"]
