@@ -72,7 +72,7 @@ namespace LibSSH
                 int bytes_read = ssh_channel_read_timeout(Channel, buffer, 10240, false, TimeoutMS);
                 if (bytes_read == 0) break;
                 string sbytes = Marshal.PtrToStringAnsi(buffer, bytes_read);
-                sbytes = Regex.Replace(sbytes, @"\x1b\[1;0H", "\n");
+                sbytes = Regex.Replace(sbytes, @"\x1b\[1;[01]H", "\n");
                 sbytes = Regex.Replace(sbytes, @"\x1b\[\??\d{1,4};?\d{0,4}\D?", "");
                 result += sbytes;
                 if (Regex.IsMatch(sbytes, ExpectRegex)) break;
