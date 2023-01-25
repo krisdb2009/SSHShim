@@ -102,7 +102,7 @@ namespace LibSSH
         {
             get
             {
-                return rMessage + "\r\n\r\n" + rError;
+                return rMessage + "\n" + rError;
             }
         }
         public LibSSHException(SSHInstance Instance, string? message)
