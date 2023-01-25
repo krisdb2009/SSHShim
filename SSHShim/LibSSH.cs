@@ -71,6 +71,7 @@ namespace LibSSH
             while (ssh_channel_is_open(Channel))
             {
                 int bytes_read = ssh_channel_read_timeout(Channel, buffer, 10240, false, TimeoutMS);
+                if (bytes_read == (int)SSH_ERROR.SSH_ERROR) throw new LibSSHException(this, "Error reading data from channel!");
                 if (bytes_read == 0) break;
                 string sbytes = Marshal.PtrToStringAnsi(buffer, bytes_read);
                 sbytes = Regex.Replace(sbytes, @"\x1b\[1;[01]H", "\n");
