@@ -8,6 +8,7 @@ namespace LibSSH
     {
         public IntPtr Session;
         public IntPtr Channel;
+        public bool IsDisposed = false;
         public string Console = "";
         public SSHInstance()
         {
@@ -19,7 +20,7 @@ namespace LibSSH
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_USER, Marshal.StringToHGlobalAnsi(Username));
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HMAC_C_S, Marshal.StringToHGlobalAnsi("hmac-sha1-96,hmac-md5,hmac-sha1,hmac-md5-96,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512"));
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HMAC_S_C, Marshal.StringToHGlobalAnsi("hmac-sha1-96,hmac-md5,hmac-sha1,hmac-md5-96,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512"));
-            ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_KEY_EXCHANGE, Marshal.StringToHGlobalAnsi("diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1,rsa-sha2-256,ssh-ed25519,ecdsa-sha2-nistp521,ecdsa-sha2-nistp384,ecdsa-sha2-nistp256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,sntrup761x25519-sha512@openssh.com,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256"));
+            ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_KEY_EXCHANGE, Marshal.StringToHGlobalAnsi("diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1,rsa-sha2-256,ssh-ed25519,ecdsa-sha2-nistp521,ecdsa-sha2-nistp384,ecdsa-sha2-nistp256,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,sntrup761x25519-sha512@openssh.com,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256"));
             ssh_options_set(Session, SSH_OPTIONS_E.SSH_OPTIONS_HOSTKEYS, Marshal.StringToHGlobalAnsi("ssh-rsa,ssh-dss,ssh-ed25519,ecdsa-sha2-nistp521,ecdsa-sha2-nistp384,ecdsa-sha2-nistp256,rsa-sha2-512,rsa-sha2-256"));
             SSH_ERROR connect_result = ssh_connect(Session);
             if (connect_result != SSH_ERROR.SSH_OK) throw new LibSSHException(this, "Could not connect to host: " + connect_result.ToString());
@@ -88,10 +89,24 @@ namespace LibSSH
         }
         public void Dispose()
         {
-            ssh_channel_close(Channel);
-            ssh_channel_free(Channel);
-            ssh_disconnect(Session);
-            ssh_free(Session);
+            if (IsDisposed) return;
+            if (Channel.ToInt32() != 0)
+            {
+                if (ssh_channel_is_open(Channel))
+                {
+                    ssh_channel_close(Channel);
+                }
+                ssh_channel_free(Channel);
+            }
+            if (Session.ToInt32() != 0)
+            {
+                if (ssh_is_connected(Session))
+                {
+                    ssh_disconnect(Session);
+                }
+                ssh_free(Session);
+            }
+            IsDisposed = true;
         }
     }
     public class LibSSHException : Exception
