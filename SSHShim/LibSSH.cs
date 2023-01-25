@@ -91,7 +91,7 @@ namespace LibSSH
         public void Dispose()
         {
             if (IsDisposed) return;
-            if (Channel.ToInt32() != 0)
+            if (Channel.ToInt64() != 0)
             {
                 if (ssh_channel_is_open(Channel))
                 {
@@ -99,7 +99,7 @@ namespace LibSSH
                 }
                 ssh_channel_free(Channel);
             }
-            if (Session.ToInt32() != 0)
+            if (Session.ToInt64() != 0)
             {
                 if (ssh_is_connected(Session))
                 {
