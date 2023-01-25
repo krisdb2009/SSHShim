@@ -43,7 +43,7 @@ namespace SSHShim
                         }
                     }
                 }
-                finaly 
+                finally 
                 {
                     instance.Dispose();
                 }
