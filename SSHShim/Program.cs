@@ -27,20 +27,26 @@ namespace SSHShim
                     commands == ""
                 ) throw new Exception("POST: 'hostname', 'username', 'password', or 'commands' missing.");
                 SSHInstance instance = new();
-                instance.Connect(hostname, username, password);
-                foreach (var command in commands.Split('\n'))
+                try 
                 {
-                    if (Regex.IsMatch(command, "^{.*}$"))
+                    instance.Connect(hostname, username, password);
+                    foreach (var command in commands.Split('\n'))
                     {
-                        ParameterLine parameters = JsonSerializer.Deserialize<ParameterLine>(command);
-                        instance.Get(parameters.TimeoutMS, parameters.Expect);
-                    }
-                    else
-                    {
-                        instance.Send(command + "\n");
+                        if (Regex.IsMatch(command, "^{.*}$"))
+                        {
+                            ParameterLine parameters = JsonSerializer.Deserialize<ParameterLine>(command);
+                            instance.Get(parameters.TimeoutMS, parameters.Expect);
+                        }
+                        else
+                        {
+                            instance.Send(command + "\n");
+                        }
                     }
                 }
-                instance.Dispose();
+                finaly 
+                {
+                    instance.Dispose();
+                }
                 await hc.Response.WriteAsync(instance.Console);
             });
             app.Run();
