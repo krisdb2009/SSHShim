@@ -87,6 +87,7 @@ namespace LibSSH
         {
             IntPtr text_ptr = Marshal.StringToHGlobalAnsi(Text);
             ssh_channel_write(Channel, text_ptr, (uint)Text.Length);
+            Marshal.FreeHGlobal(text_ptr);
         }
         public void Dispose()
         {
