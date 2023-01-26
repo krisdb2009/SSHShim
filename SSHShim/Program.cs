@@ -34,8 +34,8 @@ namespace SSHShim
                     {
                         if (Regex.IsMatch(command, "^{.*}$"))
                         {
-                            ParameterLine parameters = JsonSerializer.Deserialize<ParameterLine>(command);
-                            instance.Get(parameters.TimeoutMS, parameters.Expect);
+                            ParameterLine? parameters = JsonSerializer.Deserialize<ParameterLine>(command);
+                            if (parameters != null) instance.Get(parameters.TimeoutMS, parameters.Expect);
                         }
                         else
                         {
