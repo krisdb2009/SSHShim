@@ -118,7 +118,6 @@ namespace LibSSH
             Marshal.FreeHGlobal(MHost);
             Marshal.FreeHGlobal(MUsername);
             Marshal.FreeHGlobal(MPassword);
-            GC.SuppressFinalize(this);
             IsDisposed = true;
         }
     }
