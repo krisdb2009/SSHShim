@@ -30,7 +30,9 @@ namespace SSHShim
                 try 
                 {
                     instance.Connect(hostname, username, password);
-                    foreach (var command in commands.Split('\n'))
+                    string[] splitCommands = commands.Split("\r\n");
+                    if (splitCommands.Length <= 1) splitCommands = commands.Split('\n');
+                    foreach (string command in splitCommands)
                     {
                         if (Regex.IsMatch(command, "^{.*}$"))
                         {
